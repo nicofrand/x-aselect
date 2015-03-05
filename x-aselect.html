@@ -1,0 +1,771 @@
+<template>
+    <style scoped>
+        :host
+        {
+            box-sizing: border-box;
+            display: inline-block;
+
+            background-image: linear-gradient(to bottom, #FFFFFF 0%, #D3D3D3 100%);
+            /*
+            background-color: buttonface;
+            -webkit-appearance: menulist;
+            apperance: menulist;
+            */
+        }
+
+        :host([disabled])
+        {
+            color: graytext;
+        }
+
+        :host > div
+        {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        h1
+        {
+            font-size: inherit;
+            font-weight: normal;
+            font-family: sans-serif;
+
+            border: 1px solid #A9A9A9;
+            border-radius: 2px;
+
+            margin: 0;
+            padding: 2px 5px;
+            padding-right: 35px;
+
+            position: relative;
+        }
+
+        h1 span
+        {
+            cursor: default;
+            display: inline-block;
+            white-space: nowrap;
+            max-width: calc(100% - 37px);
+        }
+
+        h1::after
+        {
+            content: "▼";
+            display: inline-block;
+            position: absolute;
+            height: 100%;
+            top: 0;
+            right: 2px;
+            font-size: 0.8em;
+            line-height: 150%;
+        }
+
+        :host(:hover:not([disabled])) h1
+        {
+            border-color: #6D6D6D;
+        }
+
+        :host([open]) h1
+        {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-bottom: none;
+        }
+
+        h1 + div
+        {
+            display: none;
+        }
+
+        :host([open]) h1 + div
+        {
+            display: block;
+            position: absolute;
+        }
+
+        h1 + div
+        {
+            float: left;
+            box-sizing: border-box;
+            z-index: 9999;
+            /*width: 100%;*/
+
+            position: absolute;
+            min-width: 100%;
+
+            border: 1px solid #A9A9A9;
+            background-color: #F7F7F7;
+        }
+
+        h1 + div > p
+        {
+            margin: 0;
+        }
+
+        p.selection
+        {
+            border-bottom: 1px solid #A8A8A8;
+            text-align: center;
+            font-family: sans-serif;
+        }
+
+        p.selection:hover
+        {
+            background-color: #EBEBEB;
+        }
+
+        p.selection button
+        {
+            width: 100%;
+        }
+
+        ol
+        {
+            margin: 0;
+            padding: 0;
+        }
+
+        ol li
+        {
+            list-style: none;
+            padding: 2px 0px;
+        }
+
+        ol li.selected,
+        ol li:hover,
+        ol li:focus
+        {
+            background-color: #1E90FF;
+            color: white;
+        }
+
+        ol li label
+        {
+            display: inline-block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        ol li input
+        {
+            vertical-align: baseline;
+        }
+
+        ol li [data-prefix]
+        {
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        :host([reversed])
+        {
+            vertical-align: bottom;
+        }
+
+        :host([reversed]) > div > h1
+        {
+            order: 1;
+        }
+
+        :host([reversed]) > div > div
+        {
+            bottom: 100%;
+        }
+
+        :host([open][reversed]) h1
+        {
+            border-radius: 2px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+
+            border-bottom: 1px solid #A9A9A9;
+            border-top: none;
+        }
+
+        :host([reversed]:hover) h1
+        {
+            border-bottom-color: #6D6D6D;
+        }
+
+        :host([open][reversed]) h1::after
+        {
+            transform: rotate(180deg);
+        }
+    </style>
+
+    <div>
+        <h1>
+            <span></span>
+        </h1>
+        <div>
+            <p class="filter">
+                <input type="search" name="filter" placeholder="search">
+            </p>
+            <p class="selection">
+                <button type="button" name="selectAll">Select all</button>
+                <button type="button" name="unselectAll" hidden>Unselect all</button>
+            </p>
+            <ol></ol>
+        </div>
+    </div>
+</template>
+
+<script>
+    (function(window, document, undefined) {
+        var importDoc = (document._currentScript || document.currentScript).ownerDocument;
+
+        function _getValues(element)
+        {
+            var isMultiple = element.hasAttribute("multiple");
+            var type = isMultiple ? "checkbox" : "radio";
+            var values = null;
+            var inputs = element.shadowRoot.querySelectorAll("input[type='" + type + "']");
+            var size = inputs.length;
+            var i = 0;
+
+            if (!element.hasAttribute("multiple"))
+            {
+                for (i = 0; i < size; ++i)
+                {
+                    if (inputs[i].checked)
+                        return inputs[i].getAttribute("value");
+                }
+
+                return undefined;
+            }
+
+            values = [];
+            for (i = 0; i < size; ++i)
+            {
+                var input = inputs[i];
+                if (input.checked)
+                    values.push(input.getAttribute("value"));
+            }
+
+            return values;
+        }
+
+        function _updateTitle(root)
+        {
+            var title = "";
+            var isMultiple = root.host.hasAttribute("multiple");
+            var inputs = root.querySelectorAll("li.selected input");
+            var size = inputs.length;
+            for (var i = 0; i < size; ++i)
+            {
+                var input = inputs[i];
+                if (input.checked)
+                {
+                    if (title)
+                    {
+                        title += "...";
+                        break;
+                    }
+
+                    title = input.parentElement.querySelector("span.content").textContent;
+
+                    if (!isMultiple)
+                        break;
+                }
+            }
+
+            if (!title)
+                title = root.querySelector("li span.content").textContent;
+
+            root.querySelector("h1 span").textContent = title;
+        }
+
+        function _createOption(value, text, selected, name, unique, prefix)
+        {
+            var el = document.createElement("li");
+            var label = document.createElement("label");
+            var input = document.createElement("input");
+            var title = document.createElement("span");
+
+            input.setAttribute("type", (unique ? "radio" : "checkbox"));
+            input.setAttribute("value", value);
+
+            if (selected === true)
+            {
+                input.checked = true;
+                el.classList.add("selected");
+            }
+
+            if (name)
+                input.setAttribute("name", name);
+
+            label.appendChild(input);
+
+            title.textContent = text;
+            title.classList.add("content");
+
+            if (prefix instanceof HTMLElement)
+                label.appendChild(prefix);
+
+            label.appendChild(title);
+            el.appendChild(label);
+            return el;
+        }
+
+        function _checkPosition(host)
+        {
+            var bottomPosition = host.getBoundingClientRect().bottom;
+            bottomPosition += host.shadowRoot.querySelector("h1 + div").clientHeight;
+
+            if ((window.innerHeight - bottomPosition) < 0)
+                host.setAttribute("reversed", "reversed");
+            else
+                host.removeAttribute("reversed");
+        }
+
+        var _eventListeners = {
+            stopPropagation: function(event)
+            {
+                event.stopPropagation();
+            },
+
+            closeOnFocusOut: function(event)
+            {
+                if (event.target !== this)
+                    this.removeAttribute("open");
+            },
+
+            onFocusOut: function(event)
+            {
+                if (event.target !== this)
+                    this.removeAttribute("open");
+            },
+
+            onWindowResize: function(event)
+            {
+                this.removeAttribute("open");
+            },
+
+            onKeyDown: function(event)
+            {
+                if (!event.key)
+                {
+                    var legacy = {
+                        13: "Escape",
+                        27: "Enter",
+                        38: "ArrowUp",
+                        40: "ArrowDown"
+                    }
+
+                    event.key = legacy[event.keyCode];
+                }
+
+                switch (event.key)
+                {
+                    case "Escape":
+                        this.removeAttribute("open");
+                        break;
+
+                    case "Enter":
+                        this.removeAttribute("open");
+                        /*
+                        if (this.hasFocus())
+                            this.setAttribute("open", "open");
+                        else
+                            this.removeAttribute("open");
+                        */
+                        break;
+                }
+            },
+
+            onOptionSelected: function(event)
+            {
+                event.stopPropagation();
+
+                var options = this.querySelectorAll("input");
+                var size = options.length;
+                for (var i = 0; i < size; ++i)
+                {
+                    var eltClass = options[i].parentElement.parentElement.classList;
+                    if (options[i].checked)
+                        eltClass.add("selected");
+                    else
+                        eltClass.remove("selected");
+                }
+
+                var root = this.parentNode.parentNode.parentNode;
+                if (event.path[0].getAttribute("type") === "radio")
+                    root.host.removeAttribute("open");
+
+                //Update title
+                _updateTitle(root);
+
+                //Update values
+                root.host.value = _getValues(root.host);
+
+                //Dispatch event
+                root.host.dispatchEvent(new Event("change"));
+            },
+
+            toggleOpenState: function(event)
+            {
+                if (event.path[0].matches("input[name='filter']"))
+                    return;
+
+                var e = event.currentTarget;
+                if (!e.hasAttribute("disabled"))
+                {
+                    if (e.hasAttribute("open"))
+                        e.removeAttribute("open");
+                    else
+                        e.setAttribute("open", "open");
+                }
+            },
+
+            onFilter: function(event)
+            {
+                var filter = event.path[5].filter;
+                if (filter)
+                {
+                    var text = event.path[0].value;
+                    var inputs = event.path[2].querySelectorAll("ol input");
+                    var size = inputs.length;
+                    for (var i = 0; i < size; ++i)
+                    {
+                        var input = inputs[i];
+                        var option = input.parentElement.parentElement;
+
+                        try
+                        {
+                            if (filter(text, option.textContent, input.value))
+                                option.removeAttribute("hidden");
+                            else
+                                option.setAttribute("hidden", "hidden");
+                        }
+                        catch (e)
+                        {
+                            console.log("Incorrect filter");
+                        }
+                    }
+                }
+            },
+
+            selectAll: function(event)
+            {
+                event.stopPropagation();
+
+                //Select all
+                var list = event.path[2].querySelector("ol");
+                var inputs = list.querySelectorAll("input[type='checkbox']:not(hidden)");
+                var size = inputs.length;
+                var change = false;
+                for (var i = 0; i < size; ++i)
+                {
+                    if (!inputs[i].checked)
+                    {
+                        inputs[i].checked = true;
+                        change = true;
+                    }
+                }
+
+                //Trigger change event on list if needed
+                if (change)
+                    list.dispatchEvent(new Event("change"));
+
+                //Hide button
+                this.setAttribute("hidden", "true");
+
+                //Show unselect all button
+                this.nextElementSibling.removeAttribute("hidden");
+            },
+
+            unselectAll: function(event)
+            {
+                event.stopPropagation();
+
+                //Unselect all
+                var list = event.path[2].querySelector("ol");
+                var inputs = list.querySelectorAll("input[type='checkbox']:not(hidden)");
+                var size = inputs.length;
+                var change = false;
+                for (var i = 0; i < size; ++i)
+                {
+                    if (inputs[i].checked)
+                    {
+                        inputs[i].checked = false;
+                        change = true;
+                    }
+                }
+
+                //Trigger change event on list if needed
+                if (change)
+                    list.dispatchEvent(new Event("change"));
+
+                //Hide button
+                this.setAttribute("hidden", "true");
+
+                //Show select all button
+                this.previousElementSibling.removeAttribute("hidden");
+            }
+        };
+
+        //Create a new object based on the HTMLElement prototype
+        var element = Object.create(HTMLElement.prototype, {
+            filter: {
+                writable: true,
+                configurable: false,
+                value: function(filter, text, value)
+                {
+                    var reg = new RegExp("(" + filter + ")+", "i");
+                    return reg.test(text);
+                }
+            },
+
+            value: {
+                writable: true,
+                configurable: false,
+                value: undefined
+            },
+
+            _boundEventListeners: {
+                writable: true,
+                configurable: false,
+                enumerable: false,
+                value: {}
+            }
+        });
+
+        //Set up the element.
+        element.createdCallback = function()
+        {
+            //Set up the component based on the template
+            var template = importDoc.querySelector("template").content;
+            var clone = importDoc.importNode(template, true);
+            var isMultiple = this.hasAttribute("multiple");
+
+            //Create the options
+            var name = this.getAttribute("name") || ("" + Date.now());
+
+            var title = "";
+            var atLeastOneSelectedOption = false;
+            var options = this.querySelectorAll("option");
+            var size = options.length;
+            if (size)
+            {
+                var fragment = document.createDocumentFragment();
+                for (var i = 0; i < size; ++i)
+                {
+                    var o = options[i];
+                    var prefix = o.querySelector("[data-prefix]");
+                    var content = o.textContent.trim();
+
+                    if (prefix instanceof HTMLElement)
+                        content = content.substring(prefix.textContent.length).trim();
+
+                    if (!title)
+                        title = content;
+
+                    if (o.hasAttribute("selected") && !atLeastOneSelectedOption)
+                    {
+                        title = content;
+                        atLeastOneSelectedOption = true;
+                    }
+
+                    fragment.appendChild(_createOption(o.getAttribute("value"), content, o.hasAttribute("selected"), name, !isMultiple, prefix));
+
+                    //Remove the option
+                    this.removeChild(o);
+                }
+
+                var list = clone.querySelector("ol");
+                list.appendChild(fragment);
+            }
+
+            //Create the title
+            var titleElement = clone.querySelector("h1 span");
+            titleElement.textContent = title;
+
+            //Remove the filter input if not needed
+            if (!this.hasAttribute("filter"))
+                clone.querySelector("p.filter").remove();
+            else
+            {
+                var filterText = this.getAttribute("filter");
+                if (filterText)
+                    clone.querySelector("p.filter input").setAttribute("placeholder", filterText);
+            }
+
+            //Remove the selection buttons
+            if (!this.hasAttribute("data-checkAllButton") || !this.hasAttribute("multiple"))
+                clone.querySelector("p.selection").remove();
+            else
+            {
+                var selectAllText = this.getAttribute("data-checkAllButtonText");
+                var unSelectAllText = this.getAttribute("data-unCheckAllButtonText");
+
+                if (selectAllText)
+                    clone.querySelector("button[name='selectAll']").textContent = selectAllText;
+
+                if (unSelectAllText)
+                    clone.querySelector("button[name='unselectAll']").textContent = unSelectAllText;
+            }
+
+            //Add the styles
+            var styles = this.getAttribute("styles");
+            if (styles)
+            {
+                var stylesURL = styles.split(" ");
+                var size = stylesURL.length;
+                if (size)
+                {
+                    var style = "";
+                    for (var i = 0; i < size; ++i)
+                    {
+                        var link = document.querySelector("[href='" + stylesURL[i] + "']");
+                        if (link)
+                        {
+                            var rules = link.sheet.cssRules;
+                            var numberOfRules = rules.length;
+                            for (var j = 0; j < numberOfRules; ++j)
+                                style += rules[j].cssText;
+                        }
+                    }
+
+                    if (style)
+                    {
+                        var styleElement = document.createElement("style");
+                        styleElement.innerHTML = style;
+                        clone.appendChild(styleElement);
+                    }
+                }
+            }
+
+            // Create a Shadow Root
+            var shadow = this.createShadowRoot();
+            shadow.appendChild(clone);
+
+            //Set the initial values
+            this.value = _getValues(this);
+        };
+
+        //Fires when an instance was inserted into the document
+        element.attachedCallback = function()
+        {
+            this.addEventListener("click", _eventListeners.toggleOpenState);
+
+            //Filter
+            var filterInput = this.shadowRoot.querySelector("input[name='filter']");
+            if (filterInput)
+                filterInput.addEventListener("input", _eventListeners.onFilter);
+
+            //Selection
+            var selectionButton = this.shadowRoot.querySelector("button[name='selectAll']");
+            if (selectionButton)
+            {
+                selectionButton.addEventListener("click", _eventListeners.selectAll);
+                selectionButton.addEventListener("focusout", _eventListeners.stopPropagation);
+            }
+
+            selectionButton = this.shadowRoot.querySelector("button[name='unselectAll']");
+            if (selectionButton)
+            {
+                selectionButton.addEventListener("click", _eventListeners.unselectAll);
+                selectionButton.addEventListener("focusout", _eventListeners.stopPropagation);
+            }
+
+            //Change
+            var list = this.shadowRoot.querySelector("ol");
+            list.addEventListener("change", _eventListeners.onOptionSelected);
+            list.addEventListener("click", _eventListeners.stopPropagation);
+
+            if (!this.hasAttribute("disabled"))
+                this.setAttribute("tabindex", 0);
+        };
+
+        //Fires when an instance was removed from the document
+        element.detachedCallback = function()
+        {
+            this.removeEventListener("click", _eventListeners.toggleOpenState);
+
+            //Filter
+            var filterInput = this.shadowRoot.querySelector("input[name='filter']");
+            if (filterInput)
+                filterInput.removeEventListener("input", _eventListeners.onFilter);
+
+            //Selection
+            var selectionButton = this.shadowRoot.querySelector("button[name='selectAll']");
+            if (selectionButton)
+            {
+                selectionButton.removeEventListener("click", _eventListeners.selectAll);
+                selectionButton.removeEventListener("focusout", _eventListeners.stopPropagation);
+            }
+
+            selectionButton = this.shadowRoot.querySelector("button[name='unselectAll']");
+            if (selectionButton)
+            {
+                selectionButton.removeEventListener("click", _eventListeners.unselectAll);
+                selectionButton.removeEventListener("focusout", _eventListeners.stopPropagation);
+            }
+
+            //Change
+            var list = this.shadowRoot.querySelector("ol");
+            list.removeEventListener("change", _eventListeners.onOptionSelected);
+            list.removeEventListener("click", _eventListeners.stopPropagation);
+
+            //Remove event listeners set on opening
+            window.removeEventListener("resize", this._boundEventListeners.onWindowResize);
+            document.removeEventListener("click", this._boundEventListeners.onFocusOut);
+            document.removeEventListener("focusout", this._boundEventListeners.onFocusOut);
+            this.removeEventListener("keydown", this._boundEventListeners.onKeydown);
+        };
+
+        //Fires when an attribute was added, removed, or updated
+        element.attributeChangedCallback = function(attr, oldVal, newVal)
+        {
+            switch (attr)
+            {
+                case "open":
+                    if ((oldVal === "open") || (oldVal === ""))
+                    {
+                        this.removeEventListener("keydown", this._boundEventListeners.onKeydown);
+                        document.removeEventListener("focusout", this._boundEventListeners.onFocusOut);
+                        document.removeEventListener("click", this._boundEventListeners.onFocusOut);
+                        window.removeEventListener("resize", this._boundEventListeners.onWindowResize);
+                    }
+                    else
+                    {
+                        _checkPosition(this);
+
+                        this._boundEventListeners = {
+                            onKeydown: _eventListeners.onKeyDown.bind(this),
+                            onWindowResize: _eventListeners.onWindowResize.bind(this),
+                            onFocusOut: _eventListeners.closeOnFocusOut.bind(this)
+                        };
+
+                        this.addEventListener("keydown", this._boundEventListeners.onKeydown);
+                        document.addEventListener("focusout", this._boundEventListeners.onFocusOut);
+                        document.addEventListener("click", this._boundEventListeners.onFocusOut);
+                        window.addEventListener("resize", this._boundEventListeners.onWindowResize);
+                    }
+                    break;
+
+                case "multiple":
+                case "filter":
+                case "data-checkAllButton":
+                case "data-checkAllButtonText":
+                case "data-unCheckAllButtonText":
+                case "styles":
+                    console.warn("Not implemented yet");
+                    break;
+
+                case "disabled":
+                    if ((oldVal === "disabled") || (oldVal === ""))
+                        this.removeAttribute("tabindex");
+                    else
+                        this.setAttribute("tabindex", 0);
+                    break;
+            }
+        };
+
+        document.registerElement("x-aselect", {
+            prototype: element
+        });
+    }(window, document));
+</script>

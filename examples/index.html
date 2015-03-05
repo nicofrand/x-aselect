@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Test Advanced Multiple Select</title>
+        <script src="node_modules/webcomponents.js/webcomponents.min.js"></script>
+        <link rel="stylesheet" href="flags/flags.css">
+        <link rel="import" href="../x-aselect.html">
+        <script>
+            document.addEventListener("DOMContentLoaded", function()
+            {
+                var xas = document.querySelectorAll("x-aselect");
+                for (var i = 0, size = xas.length; i < size; ++i)
+                {
+                    xas[i].addEventListener("change", function(event)
+                    {
+                        console.log(event.currentTarget.getAttribute("name"), event.currentTarget.value);
+                    });
+                }
+            });
+        </script>
+        <style>
+             /* TEMP */
+            body > div
+            {
+                position: absolute;
+                top: 20%;
+                /*bottom: 4%;*/
+                left: 20%;
+
+                background-color: rgb(229, 243, 245);
+            }
+
+            x-aselect
+            {
+                min-width: 150px;
+            }
+
+            x-aselect::shadow .flag
+            {
+                font-size: 0px;
+                vertical-align: middle;
+                margin-top : -3px;
+            }
+
+            x-aselect:nth-child(2)
+            {
+                background-image: none;
+                background-color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <div>
+            <h1>Tests</h1>
+            <p>
+                <x-aselect filter name="A" styles="flags/flags.css">
+                    <option value="1">
+                        <span data-prefix class="flag flag-fr">[FR]</span>
+                        France
+                    </option>
+                    <option value="2" selected>
+                        <span data-prefix class="flag flag-de">[DE]</span>
+                        Germany
+                    </option>
+                    <option value="3">
+                        <span data-prefix class="flag flag-es">[ES]</span>
+                        Spain
+                    </option>
+                    <option value="4">
+                        <span data-prefix class="flag flag-it">[IT]</span>
+                        Italy
+                    </option>
+                    <option value="5">
+                        <span data-prefix class="flag flag-be">[BE]</span>
+                        Belgium
+                    </option>
+                </x-aselect>
+
+                <x-aselect multiple filter="Search" name="B">
+                    <option value="1">ABC 1</option>
+                    <option value="2">DEF 2</option>
+                    <option value="3" selected>GHI 3</option>
+                    <option value="4">Some real words 4</option>
+                    <option value="5">Saucisson</option>
+                </x-aselect>
+
+                <x-aselect disabled multiple filter data-checkAllButton data-checkAllButtonText="Check all" data-unCheckAllButtonText="Uncheck all" name="C">
+                    <option value="1">ABC 1</option>
+                    <option value="2" selected>DEF 2</option>
+                    <option value="3">GHI 3</option>
+                    <option value="4">Some real words 4</option>
+                    <option value="5" selected>Saucisson</option>
+                </x-aselect>
+
+                this is a test
+
+                <select disabled>
+                    <option value="1">Choice 1</option>
+                    <option value="2">Choice 2</option>
+                    <option value="3">Choice 3</option>
+                    <option value="4">Choice 4</option>
+                    <option value="5">Choice 5</option>
+                </select>
+            </p>
+            <p>
+                Under this test there should be some text too.<br>
+                Still some text here too !
+            </p>
+        </div>
+    </body>
+</html>
